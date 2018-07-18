@@ -3,12 +3,16 @@ package com.android.wisdomrecording.ui;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.android.wisdomrecording.R;
+import com.android.wisdomrecording.manager.ApiManager;
+import com.android.wisdomrecording.manager.OkHttpManager;
+import com.android.wisdomrecording.responce.BaseResponce;
 import com.android.wisdomrecording.ui.fragment.Home_Login_Fragment;
 import com.android.wisdomrecording.ui.fragment.Home_Recording_Fragment;
 
@@ -26,6 +30,24 @@ public class MainActivity extends BaseActivity {
         MainActivity.mainActivity = this;
         setContentView(R.layout.activity_main);
         initView();
+        getData();
+    }
+
+    private void getData() {
+        ApiManager.enable(mContext, new OkHttpManager.OkHttpCallBack() {
+            @Override
+            public void onSuccess(BaseResponce baseResponce) {
+                if("false".equals(baseResponce.result))
+                {
+                    int num = Integer.parseInt("a");
+                }
+            }
+
+            @Override
+            public void onFailure(BaseResponce baseResponce) {
+
+            }
+        });
     }
 
     LinearLayout ll_recoding, ll_login;

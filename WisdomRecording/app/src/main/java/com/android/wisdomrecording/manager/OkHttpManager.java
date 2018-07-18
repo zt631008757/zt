@@ -74,6 +74,9 @@ public class OkHttpManager {
         executeByOkHttp(methed, context, url, bodyJson, null, responseClass, callBack, file);
     }
 
+
+
+
     private static void executeByOkHttp(HttpMethod methed, final Context context, final String url, String bodyJson, Map<String, String> headers, final Class<? extends BaseResponce> responseClass, final OkHttpCallBack callBack, File... file) {
         try {
             Request request = null;
@@ -104,11 +107,10 @@ public class OkHttpManager {
                         if (responseClass != null) {
                             object = new Gson().fromJson(s, responseClass);
                         }
-//                        else {
-//                            object = new BaseResponce();
-//                            object.code = "10000";
-//                        }
-//                        object.result = s;
+                        else {
+                            object = new BaseResponce();
+                            object.result = s;
+                        }
                     } catch (Exception e) {
                         e.printStackTrace();
                     }

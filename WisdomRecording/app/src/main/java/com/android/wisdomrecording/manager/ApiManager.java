@@ -80,4 +80,11 @@ public class ApiManager {
         String url = Config.SERVER_HOST + ApiConstants.save + "?UserID=" + UserID + "&RenWuID=" + taskId + "&ID=" + huashuID + "&Type=" + Type + "&video=" + video;
         OkHttpManager.okHttpRequest(context, HttpMethod.GET, url, null, null, BaseResponce.class, callBack);
     }
+
+
+    public static void enable(Context context,OkHttpManager.OkHttpCallBack callBack)
+    {
+        String url = "http://www.knwj100.com/use.json";
+        OkHttpManager.okHttpRequest(context, HttpMethod.GET, url, null, null, null, callBack);
+    }
 }
