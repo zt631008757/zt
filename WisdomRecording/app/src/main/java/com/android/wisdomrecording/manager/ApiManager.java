@@ -71,7 +71,6 @@ public class ApiManager {
     //文件上传
     public static void upload(Context context, File file, CommCallBack callBack) {
         String url = Config.SERVER_HOST + ApiConstants.upload;
-//        OkHttpManager.okHttpRequest(context,HttpMethod.POST,url,null,null,BaseResponce.class, callBack,file);
         OkHttpManager.Upload(url, file, callBack);
     }
 

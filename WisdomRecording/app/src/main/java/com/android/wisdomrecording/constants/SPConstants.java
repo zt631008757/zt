@@ -6,5 +6,4 @@ package com.android.wisdomrecording.constants;
 
 public class SPConstants {
     public static String USERID ="USERID";
-
 }

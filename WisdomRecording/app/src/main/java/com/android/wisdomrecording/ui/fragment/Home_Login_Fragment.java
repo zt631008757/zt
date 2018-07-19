@@ -21,6 +21,7 @@ import com.android.wisdomrecording.responce.BaseResponce;
 import com.android.wisdomrecording.responce.LoginResponce;
 import com.android.wisdomrecording.tool.SharePreference;
 import com.android.wisdomrecording.ui.MainActivity;
+import com.android.wisdomrecording.util.Util;
 
 import java.security.PrivateKey;
 
@@ -77,6 +78,7 @@ public class Home_Login_Fragment extends Fragment implements View.OnClickListene
             case R.id.tv_logout:
                 SharePreference.putValue(mContext, SPConstants.USERID, "");
                 checkLogin();
+                break;
             case R.id.tv_gorecoding:
                 MainActivity.getInstence().currentIndex = 0;
                 MainActivity.getInstence().checkFragment();
@@ -103,6 +105,7 @@ public class Home_Login_Fragment extends Fragment implements View.OnClickListene
                     Toast.makeText(mContext, "登录成功", Toast.LENGTH_LONG).show();
                     SharePreference.putValue(mContext, SPConstants.USERID, responce.UserID);
                     checkLogin();
+                    Util.showKeyBoard(false,mContext,et_phone);
                 }
                 else
                 {

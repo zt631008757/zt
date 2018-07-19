@@ -8,20 +8,25 @@ import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.wisdomrecording.R;
 import com.android.wisdomrecording.adapter.HuaShuListAdapter;
+import com.android.wisdomrecording.bean.HuaShuChildInfo;
 import com.android.wisdomrecording.bean.HuaShuInfo;
 import com.android.wisdomrecording.constants.SPConstants;
 import com.android.wisdomrecording.interface_.CommCallBack;
 import com.android.wisdomrecording.manager.ApiManager;
 import com.android.wisdomrecording.manager.OkHttpManager;
 import com.android.wisdomrecording.responce.BaseResponce;
+import com.android.wisdomrecording.responce.HuaShuChildResponce;
 import com.android.wisdomrecording.responce.HuaShuListResponce;
+import com.android.wisdomrecording.tool.CommDialog;
 import com.android.wisdomrecording.tool.SharePreference;
 import com.android.wisdomrecording.ui.view.MultiStateView;
+import com.lzy.okgo.model.Progress;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -52,6 +57,7 @@ public class HuaShuListAcitivity extends BaseActivity {
     RecyclerView recycleview;
     TextView tv_progress, tv_beginluyin, tv_title;
     TextView tv_dailu, tv_yilu, tv_deleteall;
+    ProgressBar pb_progress;
 
     HuaShuListResponce responce;
     HuaShuListAdapter adapter;
@@ -65,6 +71,7 @@ public class HuaShuListAcitivity extends BaseActivity {
         tv_dailu = (TextView) findViewById(R.id.tv_dailu);
         tv_yilu = (TextView) findViewById(R.id.tv_yilu);
         tv_deleteall = (TextView) findViewById(R.id.tv_deleteall);
+        pb_progress = (ProgressBar) findViewById(R.id.pb_progress);
 
         multiplestatusView = (MultiStateView) findViewById(R.id.multiplestatusView);
         multiplestatusView.setViewState(MultiStateView.ViewState.LOADING);
@@ -104,6 +111,7 @@ public class HuaShuListAcitivity extends BaseActivity {
     }
 
     private void bindData() {
+        pb_progress.setProgress(Integer.parseInt(responce.完整度.replace("%","")));
         tv_progress.setText(responce.完整度);
         tv_dailu.setText(responce.待录);
         tv_yilu.setText(responce.已录);
@@ -150,15 +158,51 @@ public class HuaShuListAcitivity extends BaseActivity {
         super.onClick(view);
         switch (view.getId()) {
             case R.id.tv_beginluyin:
-                Intent intent = new Intent(mContext, HuaShuDetailActivity.class);
-                intent.putExtra("taskId", taskId);
-                startActivity(intent);
+                tv_beginluyin.setEnabled(false);
+                String uid = SharePreference.getStringValue(mContext, SPConstants.USERID, "");
+                HuaShuInfo huaShuInfo=null;
+                if(responce.话术!=null&& responce.话术.size()>0)
+                {
+                    huaShuInfo = responce.话术.get(0);
+                }else if(responce.知识库!=null&& responce.知识库.size()>0)
+                {
+                    huaShuInfo = responce.知识库.get(0);
+                }
+                if(huaShuInfo==null)  return;
+                ApiManager.huashu(mContext, uid, taskId, huaShuInfo.话术ID, huaShuInfo.Type ,new OkHttpManager.OkHttpCallBack() {
+                    @Override
+                    public void onSuccess(BaseResponce baseResponce) {
+                        tv_beginluyin.setEnabled(true);
+                        HuaShuChildResponce responce = (HuaShuChildResponce) baseResponce;
+                        if ("OK".equals(responce.result)) {
+                            HuaShuChildInfo info = responce.data.get(0);
+                            Intent intent = new Intent(mContext, HuaShuDetailActivity.class);
+                            intent.putExtra("taskId", taskId);
+                            intent.putExtra("huashuId", info.ID);
+                            intent.putExtra("Type", info.Type);
+                            startActivity(intent);
+                        } else {
+                            Toast.makeText(mContext,"请求失败，请重试",Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(BaseResponce baseResponce) {
+                        tv_beginluyin.setEnabled(true);
+                        Toast.makeText(mContext,"请求失败，请重试",Toast.LENGTH_SHORT).show();
+                    }
+                });
                 break;
             case R.id.public_title_left_img:
                 finish();
                 break;
             case R.id.tv_deleteall:
-                tv_deleteall();
+                CommDialog.showCommDialog(mContext, "", "确定", "取消", "确定清除全部吗？", null, new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        tv_deleteall();
+                    }
+                });
                 break;
         }
     }

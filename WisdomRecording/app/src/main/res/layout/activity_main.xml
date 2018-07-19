@@ -85,4 +85,16 @@
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_guid"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#77000000"
+        android:gravity="center"
+        android:text="系统暂时不可用\n请联系开发人员"
+        android:textColor="#fff"
+        android:textSize="20sp"
+        android:visibility="gone"
+        />
 </RelativeLayout>

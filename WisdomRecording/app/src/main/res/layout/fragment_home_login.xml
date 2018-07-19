@@ -51,8 +51,8 @@
                 android:hint="请输入您的手机号"
                 android:textColor="#333"
                 android:textColorHint="#777"
-                android:textSize="14sp"
-                android:text="18672782213"/>
+                android:inputType="phone"
+                android:textSize="14sp"/>
 
         </LinearLayout>
 
@@ -84,8 +84,8 @@
                 android:background="#fff"
                 android:hint="请输入您的密码"
                 android:textColor="#333"
-                android:text="18672782213"
                 android:textColorHint="#777"
+                android:inputType="textPassword"
                 android:textSize="14sp" />
 
         </LinearLayout>

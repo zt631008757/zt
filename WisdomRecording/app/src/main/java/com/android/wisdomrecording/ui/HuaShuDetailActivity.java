@@ -17,22 +17,32 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.wisdomrecording.R;
+import com.android.wisdomrecording.bean.HuaShuChildInfo;
 import com.android.wisdomrecording.constants.SPConstants;
 import com.android.wisdomrecording.interface_.CommCallBack;
 import com.android.wisdomrecording.manager.ApiManager;
 import com.android.wisdomrecording.manager.OkHttpManager;
 import com.android.wisdomrecording.responce.BaseResponce;
+import com.android.wisdomrecording.responce.FileUploadResonce;
 import com.android.wisdomrecording.responce.HuaShuDetailReponce;
+import com.android.wisdomrecording.tool.CommDialog;
 import com.android.wisdomrecording.tool.SharePreference;
 import com.android.wisdomrecording.ui.view.MultiStateView;
+import com.android.wisdomrecording.util.AudioFileFunc;
+import com.android.wisdomrecording.util.AudioRecordUtil;
+import com.android.wisdomrecording.util.ErrorCode;
 import com.android.wisdomrecording.util.MediaPlayerUtil;
 import com.android.wisdomrecording.util.Util;
+import com.google.gson.Gson;
 
 import java.io.File;
+import java.util.List;
 
 /**
  * Created by Administrator on 2018/6/20.
@@ -62,10 +72,17 @@ public class HuaShuDetailActivity extends BaseActivity {
     }
 
     HuaShuDetailReponce reponce;
-    TextView tv_title, tv_start_recode, tv_upload;
+    TextView tv_title, tv_start_recode;
     ImageView iv_play, iv_delete, iv_edit;
     MultiStateView multiplestatusView;
-    TextView tv_name, tv_content, tv_statu, tv_shenyu,tv_save;
+    TextView tv_name, tv_content, tv_statu, tv_shenyu, tv_save;
+    LinearLayout ll_left, ll_right;
+    RelativeLayout rl_loading;
+
+    AudioRecordUtil util;
+    String fileName = "";
+    List<HuaShuChildInfo> list;
+    int currentIndex = 0;
 
     private void initView() {
         tv_title = (TextView) findViewById(R.id.tv_title);
@@ -79,30 +96,71 @@ public class HuaShuDetailActivity extends BaseActivity {
         iv_play = (ImageView) findViewById(R.id.iv_play);
         iv_delete = (ImageView) findViewById(R.id.iv_delete);
         iv_edit = (ImageView) findViewById(R.id.iv_edit);
-        tv_upload = (TextView) findViewById(R.id.tv_upload);
         tv_save = (TextView) findViewById(R.id.tv_save);
+        ll_left = (LinearLayout) findViewById(R.id.ll_left);
+        ll_right = (LinearLayout) findViewById(R.id.ll_right);
+        rl_loading = (RelativeLayout) findViewById(R.id.rl_loading);
+        rl_loading.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+            }
+        });
 
         iv_play.setOnClickListener(this);
         iv_delete.setOnClickListener(this);
         iv_edit.setOnClickListener(this);
-        tv_upload.setOnClickListener(this);
         tv_save.setOnClickListener(this);
+        ll_left.setOnClickListener(this);
+        ll_right.setOnClickListener(this);
         tv_start_recode.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View view, MotionEvent motionEvent) {
+                File file;
                 switch (motionEvent.getAction()) {
                     //按下操作
                     case MotionEvent.ACTION_DOWN:
-                        Log.i("test", "voicePermission:" + voicePermission());
-                        if (voicePermission()) {
-
+                        file = new File(AudioFileFunc.getWavFilePath());
+                        if (file.exists()) {
+                            file.delete();
                         }
-                        recordOperation();
+                        util = new AudioRecordUtil();
+
+                        int result = util.startRecordAndFile();
+                        if (result == ErrorCode.SUCCESS) {
+                            //正常录制
+                            tv_start_recode.setText("松开结束");
+                            tv_start_recode.setBackgroundResource(R.drawable.shape_btn_round_maincolor);
+                            tv_start_recode.setTextColor(Color.parseColor("#ffffff"));
+                        } else {
+                            file = new File(AudioFileFunc.getWavFilePath());
+                            if (file.exists()) {
+                                file.delete();
+                            }
+                        }
                         break;
                     //松开操作
                     case MotionEvent.ACTION_CANCEL:
                     case MotionEvent.ACTION_UP:
-                        stopRecord();
+                        util.stopRecordAndFile();
+                        tv_start_recode.setText("按住说话");
+                        tv_start_recode.setBackgroundResource(R.drawable.shape_btn_round_blue_withstcoke);
+                        tv_start_recode.setTextColor(getResources().getColor(R.color.mainColor));
+
+                        //判断录制结果
+                        long fileSize = util.getRecordFileSize();
+                        if (fileSize <= 7148) {
+                            break;
+                        } else if (fileSize < 100000) {
+                            Toast.makeText(mContext, "录制时间太短，请重新录制", Toast.LENGTH_SHORT).show();
+                            break;
+                        }
+
+                        file = new File(AudioFileFunc.getWavFilePath());
+                        if (file.exists()) {
+                            //上传操作
+                            upload(file);
+                        }
                         break;
                 }
                 //对OnTouch事件做了处理，返回true
@@ -122,20 +180,36 @@ public class HuaShuDetailActivity extends BaseActivity {
     }
 
     private void getData() {
+        fileName = "";
         String uid = SharePreference.getStringValue(mContext, SPConstants.USERID, "");
         ApiManager.huashu_disp(mContext, uid, taskId, huashuId, Type, new OkHttpManager.OkHttpCallBack() {
             @Override
             public void onSuccess(BaseResponce baseResponce) {
+                hideLoading();
                 multiplestatusView.setViewState(MultiStateView.ViewState.CONTENT);
                 reponce = (HuaShuDetailReponce) baseResponce;
+                if (reponce.data != null) {
+                    list = reponce.data;
+                }
                 bindUI();
             }
 
             @Override
             public void onFailure(BaseResponce baseResponce) {
+                rl_loading.setVisibility(View.GONE);
                 multiplestatusView.setViewState(MultiStateView.ViewState.ERROR);
             }
         });
+    }
+
+    private void showLoading(String text) {
+        TextView tv_loading = (TextView) findViewById(R.id.tv_loading);
+        tv_loading.setText(text);
+        rl_loading.setVisibility(View.VISIBLE);
+    }
+
+    private void hideLoading() {
+        rl_loading.setVisibility(View.GONE);
     }
 
     private void bindUI() {
@@ -150,16 +224,19 @@ public class HuaShuDetailActivity extends BaseActivity {
             tv_statu.setTextColor(mContext.getResources().getColor(R.color.green));
         }
 
-//        if ("待录音".equals(reponce.状态)) {
-//
-//        } else {
-//
-//        }
         checkStatu();
     }
 
     private void checkStatu() {
-        if ("待录音".equals(reponce.状态)) {
+        if (!TextUtils.isEmpty(fileName)) {
+            iv_play.setEnabled(true);
+            iv_play.setImageResource(R.drawable.ico_voice);
+            iv_delete.setEnabled(true);
+            iv_delete.setImageResource(R.drawable.ico_delete);
+            tv_start_recode.setEnabled(false);
+            tv_start_recode.setBackgroundResource(R.drawable.shape_btn_round_grey_withstcoke);
+            tv_start_recode.setTextColor(Color.parseColor("#999999"));
+        } else if ("待录音".equals(reponce.状态)) {   //
             iv_play.setEnabled(false);
             iv_play.setImageResource(R.drawable.ico_voice_grey);
             iv_delete.setEnabled(false);
@@ -188,10 +265,13 @@ public class HuaShuDetailActivity extends BaseActivity {
                 finish();
                 break;
             case R.id.iv_play:
-                MediaPlayerUtil.play(mAudioFile.getPath());
-                break;
-            case R.id.iv_delete:
-                del();
+                File file = new File(AudioFileFunc.getWavFilePath());
+                if (!TextUtils.isEmpty(fileName) && file.exists()) {
+                    MediaPlayerUtil.play(file.getPath());
+                } else if (!TextUtils.isEmpty(reponce.录音文件名)) {
+                    MediaPlayerUtil.play(reponce.录音文件名);
+//                    MediaPlayerUtil.play("http://fjdx.sc.chinaz.com/Files/DownLoad/sound1/201606/7351.wav");
+                }
                 break;
             case R.id.iv_edit:
                 Intent intent = new Intent(mContext, EditHuaShuActivity.class);
@@ -201,142 +281,107 @@ public class HuaShuDetailActivity extends BaseActivity {
                 intent.putExtra("Type", Type);
                 startActivity(intent);
                 break;
-            case R.id.tv_upload:
-                upload();
-                break;
             case R.id.tv_save:
                 save();
+            case R.id.iv_delete:
+                del();
+                break;
+            case R.id.ll_left:
+                if (currentIndex == 0) {
+                    Toast.makeText(mContext, "没有上一条了", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                currentIndex--;
+                huashuId = list.get(currentIndex).ID;
+                Type = list.get(currentIndex).Type;
+                showLoading("加载中");
+                getData();
+                break;
+            case R.id.ll_right:
+                if (currentIndex == list.size() - 1) {
+                    Toast.makeText(mContext, "没有下一条了", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                currentIndex++;
+                huashuId = list.get(currentIndex).ID;
+                Type = list.get(currentIndex).Type;
+                showLoading("加载中");
+                getData();
                 break;
         }
     }
 
-    private void upload()
-    {
-        File uploadFile = new File(Util.getDiskCacheRootDir(mContext) + "/clock.wav");
-        ApiManager.upload(mContext, uploadFile, new CommCallBack() {
+
+    private void upload(File file) {
+        showLoading("上传录音中");
+        ApiManager.upload(mContext, file, new CommCallBack() {
             @Override
             public void onResult(Object obj) {
-
+                hideLoading();
+                String result = (String) obj;
+                // {"code":"0","msg":"上传成功","filename":"./video/20180719002126.wav"}
+                FileUploadResonce fileUploadResonce = new Gson().fromJson(result, FileUploadResonce.class);
+                if ("上传成功".equals(fileUploadResonce.msg)) {
+                    Toast.makeText(mContext, "上传成功", Toast.LENGTH_SHORT).show();
+                    fileName = fileUploadResonce.filename;
+                    checkStatu();
+                } else {
+                    Toast.makeText(mContext, "上传失败：" + fileUploadResonce.msg, Toast.LENGTH_SHORT).show();
+                }
             }
         });
-    }
-
-    MediaRecorder mMediaRecorder;
-    long startTime = 0;
-    long endTime = 0;
-    File mAudioFile;
-
-    /**
-     * @description 录音操作
-     * @author ldm
-     * @time 2017/2/9 9:34
-     */
-    private void recordOperation() {
-        //创建MediaRecorder对象
-        mMediaRecorder = new MediaRecorder();
-        //创建录音文件,.m4a为MPEG-4音频标准的文件的扩展名
-        mAudioFile = new File(Util.getDiskCacheRootDir(mContext) + System.currentTimeMillis() + ".m4a");
-        //创建父文件夹
-        mAudioFile.getParentFile().mkdirs();
-        try {
-            //创建文件
-            mAudioFile.createNewFile();
-            //配置mMediaRecorder相应参数
-            //从麦克风采集声音数据
-            mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-            //设置保存文件格式为MP4
-            mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-            //设置采样频率,44100是所有安卓设备都支持的频率,频率越高，音质越好，当然文件越大
-            mMediaRecorder.setAudioSamplingRate(44100);
-            //设置声音数据编码格式,音频通用格式是AAC
-            mMediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-            //设置编码频率
-            mMediaRecorder.setAudioEncodingBitRate(96000);
-            //设置录音保存的文件
-            mMediaRecorder.setOutputFile(mAudioFile.getAbsolutePath());
-            //开始录音
-            mMediaRecorder.prepare();
-            mMediaRecorder.start();
-            //记录开始录音时间
-            startTime = System.currentTimeMillis();
-        } catch (Exception e) {
-            e.printStackTrace();
-            Log.i("test", "Exception:" + e.getMessage());
-        }
-    }
-
-    /**
-     * @description 结束录音操作
-     * @author ldm
-     * @time 2017/2/9 9:18
-     */
-    private void stopRecord() {
-        if (mMediaRecorder == null) return;
-        //停止录音
-        mMediaRecorder.stop();
-        //记录停止时间
-        endTime = System.currentTimeMillis();
-        //录音时间处理，比如只有大于2秒的录音才算成功
-        int time = (int) ((endTime - startTime) / 1000);
-        if (time >= 3) {
-            //录音成功,添加数据
-        } else {
-            mAudioFile = null;
-        }
-        //录音完成释放资源
-        releaseRecorder();
-    }
-
-    private boolean voicePermission() {
-        return (PackageManager.PERMISSION_GRANTED == ContextCompat.
-                checkSelfPermission(mContext, android.Manifest.permission.RECORD_AUDIO));
-    }
-
-
-    /**
-     * @description 翻放录音相关资源
-     * @author ldm
-     * @time 2017/2/9 9:33
-     */
-    private void releaseRecorder() {
-        if (null != mMediaRecorder) {
-            mMediaRecorder.release();
-            mMediaRecorder = null;
-        }
     }
 
 
     private void del() {
-        String uid = SharePreference.getStringValue(mContext, SPConstants.USERID, "");
-        ApiManager.del(mContext, uid, taskId, huashuId, Type, new OkHttpManager.OkHttpCallBack() {
+        CommDialog.showCommDialog(mContext, "", "确定", "取消", "确定删除吗？", null, new View.OnClickListener() {
             @Override
-            public void onSuccess(BaseResponce baseResponce) {
-                if ("OK".equals(baseResponce.result)) {
-                    Toast.makeText(mContext, "已删除录音", Toast.LENGTH_SHORT).show();
+            public void onClick(View v) {
+                if (!TextUtils.isEmpty(fileName)) {
+                    fileName = "";
+                    checkStatu();
+                } else {
+                    String uid = SharePreference.getStringValue(mContext, SPConstants.USERID, "");
+                    ApiManager.del(mContext, uid, taskId, huashuId, Type, new OkHttpManager.OkHttpCallBack() {
+                        @Override
+                        public void onSuccess(BaseResponce baseResponce) {
+                            if ("OK".equals(baseResponce.result)) {
+                                Toast.makeText(mContext, "已删除录音", Toast.LENGTH_SHORT).show();
+                            }
+                            getData();
+                        }
+
+                        @Override
+                        public void onFailure(BaseResponce baseResponce) {
+
+                        }
+                    });
                 }
-                getData();
-            }
-
-            @Override
-            public void onFailure(BaseResponce baseResponce) {
-
             }
         });
     }
 
-    private void save()
-    {
-        String uid = SharePreference.getStringValue(mContext, SPConstants.USERID, "");
-        ApiManager.save(mContext, uid, taskId, huashuId, Type, "20180718132206.wav", new OkHttpManager.OkHttpCallBack() {
-            @Override
-            public void onSuccess(BaseResponce baseResponce) {
+    private void save() {
+        if (!TextUtils.isEmpty(fileName)) {
+            String uid = SharePreference.getStringValue(mContext, SPConstants.USERID, "");
+            ApiManager.save(mContext, uid, taskId, huashuId, Type, fileName, new OkHttpManager.OkHttpCallBack() {
+                @Override
+                public void onSuccess(BaseResponce baseResponce) {
+                    if ("OK".equals(baseResponce.result.toUpperCase())) {
+                        Toast.makeText(mContext, "保存成功", Toast.LENGTH_SHORT).show();
+                        getData();
+                    }
+                }
 
-            }
-
-            @Override
-            public void onFailure(BaseResponce baseResponce) {
-
-            }
-        });
+                @Override
+                public void onFailure(BaseResponce baseResponce) {
+                    Toast.makeText(mContext, "请求失败，请重试", Toast.LENGTH_SHORT).show();
+                }
+            });
+        } else if ("已录音".equals(reponce.状态)) {
+            Toast.makeText(mContext, "保存成功", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(mContext, "存在待录制话术", Toast.LENGTH_SHORT).show();
+        }
     }
 }

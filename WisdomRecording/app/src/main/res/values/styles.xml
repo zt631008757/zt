@@ -20,4 +20,8 @@
         </item>
         <item name="android:progressDrawable">@drawable/progressbar_download</item>
     </style>
+
+    <style name="myDialog">
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
 </resources>

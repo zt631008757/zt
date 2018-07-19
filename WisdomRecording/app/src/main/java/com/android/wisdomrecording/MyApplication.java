@@ -1,6 +1,7 @@
 package com.android.wisdomrecording;
 
 import android.app.Application;
+import android.content.Context;
 
 import com.lzy.okgo.OkGo;
 import com.lzy.okgo.cache.CacheEntity;
@@ -16,10 +17,13 @@ import java.util.logging.Level;
 import okhttp3.OkHttpClient;
 
 public class MyApplication extends Application {
+
+    public static Context context;
+
     @Override
     public void onCreate() {
         super.onCreate();
-
+        context =this;
         initOkGo();
     }
 

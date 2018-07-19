@@ -8,6 +8,7 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.android.wisdomrecording.R;
 import com.android.wisdomrecording.manager.ApiManager;
@@ -37,9 +38,14 @@ public class MainActivity extends BaseActivity {
         ApiManager.enable(mContext, new OkHttpManager.OkHttpCallBack() {
             @Override
             public void onSuccess(BaseResponce baseResponce) {
-                if("false".equals(baseResponce.result))
+                String result = baseResponce.result.replace("\n","");
+                if("true".equals(result))
                 {
-                    int num = Integer.parseInt("a");
+                    tv_guid.setVisibility(View.GONE);
+                }
+                else if("false".equals(result))
+                {
+                    tv_guid.setVisibility(View.VISIBLE);
                 }
             }
 
@@ -53,6 +59,7 @@ public class MainActivity extends BaseActivity {
     LinearLayout ll_recoding, ll_login;
     ImageView img_recoding, img_login;
     TextView tv_recoding, tv_login;
+    TextView tv_guid;
     public int currentIndex = 0;
 
     Home_Recording_Fragment recodingFregment;
@@ -66,16 +73,21 @@ public class MainActivity extends BaseActivity {
         img_login = (ImageView) findViewById(R.id.img_login);
         tv_recoding = (TextView) findViewById(R.id.tv_recoding);
         tv_login = (TextView) findViewById(R.id.tv_login);
+        tv_guid  = (TextView) findViewById(R.id.tv_guid);
 
         ll_login.setOnClickListener(this);
         ll_recoding.setOnClickListener(this);
+        tv_guid.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+            }
+        });
 
         recodingFregment = new Home_Recording_Fragment();
         loginFragment = new Home_Login_Fragment();
         getSupportFragmentManager().beginTransaction().add(R.id.fragment, loginFragment).commit();
         getSupportFragmentManager().beginTransaction().add(R.id.fragment, recodingFregment).commit();
-
-
     }
 
     @Override

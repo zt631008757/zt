@@ -60,6 +60,7 @@ public class TaskListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         contentViewHolder.tv_statu.setText(tagInfo.状态);
         contentViewHolder.tv_time.setText("话术更新于" + tagInfo.更新时间);
         contentViewHolder.tv_progress.setText(tagInfo.完整度);
+        contentViewHolder.pb_progress.setProgress(Integer.parseInt(tagInfo.完整度.replace("%","")));
         contentViewHolder.itemView.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
